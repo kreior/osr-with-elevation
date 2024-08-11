@@ -26,6 +26,7 @@
 #include "utl/verify.h"
 #include "utl/zip.h"
 
+#include "osr/extract/elevation/dem_source.h"
 #include "osr/point.h"
 #include "osr/types.h"
 #include "osr/util/multi_counter.h"
@@ -182,7 +183,7 @@ struct ways {
     r_->node_restrictions_.resize(node_to_osm_.size());
   }
 
-  void connect_ways() {
+  void connect_ways(elevation::dem_source& dem) {
     auto pt = utl::get_active_progress_tracker_or_activate("osr");
 
     {  // Assign graph node ids to every node with >1 way.
@@ -222,13 +223,16 @@ struct ways {
         auto pred_pos = std::make_optional<point>();
         auto from = node_idx_t::invalid();
         auto distance = 0.0;
+        elevation::ElevationChange elevationChange;
         auto i = std::uint16_t{0U};
         auto way_idx = way_idx_t{r_->way_nodes_.size()};
         auto dists = r_->way_node_dist_.add_back_sized(0U);
+        auto elev = r_->way_node_elevation_.add_back_sized(0U);
         auto nodes = r_->way_nodes_.add_back_sized(0U);
         for (auto const [osm_node_idx, pos] : utl::zip(osm_nodes, polyline)) {
           if (pred_pos.has_value()) {
             distance += geo::distance(pos, *pred_pos);
+            elevationChange = elevation::sample_elevation_change(*pred_pos, pos, dem, elevation::sampling_interval);
           }
 
           if (node_way_counter_.is_multi(to_idx(osm_node_idx))) {
@@ -238,10 +242,12 @@ struct ways {
             nodes.push_back(to);
 
             if (from != node_idx_t::invalid()) {
-              dists.push_back(static_cast<std::uint16_t>(std::round(distance)));
+              dists.push_back(static_cast<std::uint16_t>(std::round(distance)));//here the distance is aggregated
+              elev.push_back(elevationChange.getData());
             }
 
             distance = 0.0;
+            elevationChange.reset();
             from = to;
 
             if (i == std::numeric_limits<std::uint16_t>::max()) {
@@ -377,6 +383,7 @@ struct ways {
 
     vecvec<way_idx_t, node_idx_t> way_nodes_;
     vecvec<way_idx_t, std::uint16_t> way_node_dist_;
+    vecvec<way_idx_t, std::uint8_t> way_node_elevation_;
 
     vecvec<node_idx_t, way_idx_t> node_ways_;
     vecvec<node_idx_t, std::uint16_t> node_in_way_idx_;

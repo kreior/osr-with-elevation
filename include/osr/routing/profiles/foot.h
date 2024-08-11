@@ -176,6 +176,12 @@ struct foot {
           }
 
           auto const dist = w.way_node_dist_[way][std::min(from, to)];
+          //TODO add different elevation profiles (disabled, less hilly, flat, hilly)
+          //No need to access the data if disabled
+          elevation::ElevationChange elev(w.way_node_elevation_[way][std::min(from, to)]);
+          if(from > to){
+            elev.reverseDirection();
+          }
           auto const cost = way_cost(target_way_prop, way_dir, dist) +
                             node_cost(target_node_prop);
           fn(node{target_node, *target_lvl}, static_cast<std::uint32_t>(cost),
@@ -293,6 +299,66 @@ struct foot {
     return it->second;
   }
 
+  // Taken from https://osmand.net/docs/technical/osmand-file-formats/osmand-routing-xml#penalties-of-elevation-data
+  // can return 0 if the slope is inaccessible
+  static constexpr uint8_t getSlopePenalty(double slope){
+    if (slope >= 0) {
+      if (slope < 3.0) {
+        return 1;
+      } else if (slope < 7.0) {
+        return 4;
+      } else if (slope < 13.0) {
+        return 8;
+      } else if (slope < 25.0) {
+        return 10;
+      } else {
+        return 15;
+      }
+    } else {
+      if (slope > -9.0) {
+        return 5;
+      } else if (slope > -17.0) {
+        return 10;
+      } else if (slope > -35.0) {
+        return 17;
+      } else if (slope > -60.0) {
+        return 25;
+      } else {
+        return 40;
+      }
+    }
+  }
+
+  static constexpr cost_t way_cost(way_properties const e,
+                                   direction,
+                                   std::uint16_t const dist,
+                                   elevation::ElevationChange const& elev) {
+    if ((e.is_foot_accessible() || e.is_bike_accessible()) &&
+        (!IsWheelchair || !e.is_steps())) {
+      auto base_cost = dist / (IsWheelchair ? 0.8 : 1.1F);
+
+      //TODO should be dependant on elevation profile
+      double slope = elevation::getAverageSlope(elev, dist);
+      if(slope > 8.3) {
+        return kInfeasible;
+      }
+
+      auto positiveSlopePenalty = getSlopePenalty(slope);
+      auto negativeSlopePenalty = getSlopePenalty(-slope);
+      if((positiveSlopePenalty == 0 && elev.getElevation() > 0)
+          || (negativeSlopePenalty == 0 && elev.getDescentFraction() > 0)) {
+        return kInfeasible;
+      }
+
+      return static_cast<cost_t>(std::round(
+          base_cost * elev.getElevationFraction() * positiveSlopePenalty
+          + base_cost * elev.getDescentFraction() * negativeSlopePenalty));
+
+    } else {
+      return kInfeasible;
+    }
+  }
+
   static constexpr cost_t way_cost(way_properties const e,
                                    direction,
                                    std::uint16_t const dist) {
@@ -309,5 +375,6 @@ struct foot {
     return n.is_walk_accessible() ? (n.is_elevator() ? 90U : 0U) : kInfeasible;
   }
 };
+
 
 }  // namespace osr

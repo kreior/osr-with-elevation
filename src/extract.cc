@@ -395,6 +395,13 @@ struct rel_ways_handler : public osm::handler::Handler {
 void extract(bool const with_platforms,
              fs::path const& in,
              fs::path const& out) {
+  extract(with_platforms,  in, "", out);
+}
+
+void extract(bool const with_platforms,
+             fs::path const& in,
+             fs::path const& elev,
+             fs::path const& out) {
   auto ec = std::error_code{};
   fs::remove_all(out, ec);
   if (!fs::is_directory(out)) {
@@ -426,6 +433,10 @@ void extract(bool const with_platforms,
   auto pl = std::unique_ptr<platforms>{};
   if (with_platforms) {
     pl = std::make_unique<platforms>(out, cista::mmap::protection::WRITE);
+  }
+  elevation::dem_source dem;
+  if(!elev.empty()){
+    dem.add_file(elev);
   }
 
   w.node_way_counter_.reserve(12000000000);
@@ -507,7 +518,7 @@ void extract(bool const with_platforms,
     reader.close();
   }
 
-  w.connect_ways();
+  w.connect_ways(dem);
 
   auto r = std::vector<resolved_restriction>{};
   {
