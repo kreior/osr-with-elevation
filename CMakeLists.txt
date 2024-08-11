@@ -123,6 +123,7 @@ target_link_libraries(osr
         rtree
         unordered_dense
         boost-thread
+        boost-iostreams
 )
 
 # --- MAIN ---

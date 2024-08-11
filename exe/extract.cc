@@ -14,19 +14,20 @@ using namespace boost::program_options;
 namespace fs = std::filesystem;
 
 struct config : public conf::configuration {
-  config(std::filesystem::path in, std::filesystem::path out)
-      : configuration{"Options"}, in_{std::move(in)}, out_{std::move(out)} {
+  config(std::filesystem::path in, std::filesystem::path elev, std::filesystem::path out)
+      : configuration{"Options"}, in_{std::move(in)}, elev_{std::move(elev)}, out_{std::move(out)} {
     param(in_, "in,i", "OpenStreetMap .osm.pbf input path");
+    param(elev_, "elev,e", "OpenStreetMap .osm.pbf input path");
     param(out_, "out,o", "output directory");
     param(with_platforms_, "with_platforms,p", "extract platform info");
   }
 
-  std::filesystem::path in_, out_;
+  std::filesystem::path in_, elev_, out_;
   bool with_platforms_{false};
 };
 
 int main(int ac, char const** av) {
-  auto c = config{"./planet-latest.osm.pbf", "./osr"};
+  auto c = config{"./planet-latest.osm.pbf", "", "./osr"};
 
   conf::options_parser parser({&c});
   parser.read_command_line_args(ac, av);
@@ -44,5 +45,5 @@ int main(int ac, char const** av) {
   utl::activate_progress_tracker("osr");
   auto const silencer = utl::global_progress_bars{false};
 
-  extract(c.with_platforms_, c.in_, c.out_);
+  extract(c.with_platforms_, c.in_, c.elev_, c.out_);
 }

@@ -26,6 +26,7 @@
 #include "utl/verify.h"
 #include "utl/zip.h"
 
+#include "osr/extract/elevation/dem_source.h"
 #include "osr/point.h"
 #include "osr/types.h"
 #include "osr/util/multi_counter.h"
@@ -140,7 +141,7 @@ struct ways {
   ways(std::filesystem::path, cista::mmap::protection);
 
   void add_restriction(std::vector<resolved_restriction>&);
-  void connect_ways();
+  void connect_ways(elevation::dem_source&);
 
   std::optional<way_idx_t> find_way(osm_way_idx_t const i) {
     auto const it = std::lower_bound(begin(way_osm_idx_), end(way_osm_idx_), i);
@@ -240,6 +241,7 @@ struct ways {
 
     vecvec<way_idx_t, node_idx_t> way_nodes_;
     vecvec<way_idx_t, std::uint16_t> way_node_dist_;
+    vecvec<way_idx_t, std::uint8_t> way_node_elevation_;
 
     vecvec<node_idx_t, way_idx_t> node_ways_;
     vecvec<node_idx_t, std::uint16_t> node_in_way_idx_;
