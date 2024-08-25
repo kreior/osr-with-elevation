@@ -239,7 +239,7 @@
         <option value="backward">backward</option>
     </select>
 
-    <select id="elevation" onchange="selectElevation(event)">
+    <select id="elevation-profile" onchange="selectElevation(event)">
         <option value="disabled" selected>Disabled</option>
         <option value="less_hilly">Less Hilly</option>
         <option value="flat">Flat</option>
@@ -257,8 +257,8 @@
         start_level: 0.0,
         destination_level: 0.0,
         profile: document.getElementById('profile').value,
-        direction: document.getElementById('direction').value
-        elevation: document.getElementById('direction').value
+        direction: document.getElementById('direction').value,
+        elevation: document.getElementById('elevation-profile').value
     };
 
     const meta = document.getElementById('journey-info');
