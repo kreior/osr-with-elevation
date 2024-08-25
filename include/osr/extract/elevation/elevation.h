@@ -86,7 +86,7 @@ public:
 };
 
 
-constexpr double getAverageSlope(ElevationChange const& elev,
+constexpr double get_average_slope(ElevationChange const& elev,
                                  uint16_t const dist){
   if(dist == 0){
     return 0.0;

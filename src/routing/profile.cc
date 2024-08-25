@@ -33,4 +33,24 @@ std::string_view to_str(search_profile const p) {
   throw utl::fail("{} is not a valid profile", static_cast<std::uint8_t>(p));
 }
 
+elevation_profile to_elevation_profile(std::string_view s) {
+  switch (cista::hash(s)) {
+    case cista::hash("disabled"): return elevation_profile::disabled;
+    case cista::hash("less_hilly"): return elevation_profile::lessHilly;
+    case cista::hash("flat"): return elevation_profile::flat;
+    case cista::hash("hilly"): return elevation_profile::hilly;
+  }
+  throw utl::fail("{} is not a valid elevation profile", s);
+}
+  std::string_view elevation_profile_to_str(elevation_profile const p) {
+  switch (p) {
+    case elevation_profile::disabled: return "disabled";
+    case elevation_profile::lessHilly: return "less_hilly";
+    case elevation_profile::flat: return "flat";
+    case elevation_profile::hilly: return "hilly";
+  }
+  throw utl::fail("{} is not a valid elevation profile",
+                  static_cast<std::uint8_t>(p));
+}
+
 }  // namespace osr

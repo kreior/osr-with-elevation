@@ -111,6 +111,7 @@ add_library(osr ${osr-src})
 target_include_directories(osr PUBLIC include)
 target_compile_features(osr PUBLIC cxx_std_23)
 target_compile_options(osr PRIVATE ${osr-compile-options})
+find_package(Boost REQUIRED COMPONENTS filesystem iostreams)
 target_link_libraries(osr
         osmium
         zlibstatic
@@ -123,7 +124,8 @@ target_link_libraries(osr
         rtree
         unordered_dense
         boost-thread
-        boost-iostreams
+        Boost::filesystem
+        Boost::iostreams
 )
 
 # --- MAIN ---

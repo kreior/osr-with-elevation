@@ -35,6 +35,7 @@ struct path {
 
   cost_t cost_{kInfeasible};
   double dist_{0.0};
+  //can add elevation to reconstruct here
   std::vector<segment> segments_{};
   bool uses_elevator_{false};
 };
@@ -46,6 +47,7 @@ std::vector<std::optional<path>> route(
     ways const&,
     lookup const&,
     search_profile,
+    elevation_profile elev_profile,
     location const& from,
     std::vector<location> const& to,
     cost_t max,
@@ -60,6 +62,7 @@ std::vector<std::optional<path>> route(
 std::optional<path> route(ways const&,
                           lookup const&,
                           search_profile,
+                          elevation_profile elev_profile,
                           location const& from,
                           location const& to,
                           cost_t max,

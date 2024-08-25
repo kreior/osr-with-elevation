@@ -391,6 +391,7 @@ std::vector<std::optional<path>> route(
     ways const& w,
     lookup const& l,
     search_profile const profile,
+    elevation_profile const elev_profile,
     location const& from,
     std::vector<location> const& to,
     cost_t const max,
@@ -415,7 +416,16 @@ std::vector<std::optional<path>> route(
 
   switch (profile) {
     case search_profile::kFoot:
-      return r(get_dijkstra<foot<false, elevator_tracking>>());
+      switch (elev_profile) {
+        case elevation_profile::flat:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::flat>>());
+        case elevation_profile::hilly:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::hilly>>());
+        case elevation_profile::lessHilly:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::lessHilly>>());
+        default:
+          return r(get_dijkstra<foot<false, elevator_tracking>>());
+      }
     case search_profile::kWheelchair:
       return r(get_dijkstra<foot<true, elevator_tracking>>());
     case search_profile::kBike: return r(get_dijkstra<bike>());
@@ -433,6 +443,7 @@ std::vector<std::optional<path>> route(
 std::optional<path> route(ways const& w,
                           lookup const& l,
                           search_profile const profile,
+                          elevation_profile const elev_profile,
                           location const& from,
                           location const& to,
                           cost_t const max,
@@ -457,7 +468,16 @@ std::optional<path> route(ways const& w,
 
   switch (profile) {
     case search_profile::kFoot:
-      return r(get_dijkstra<foot<false, elevator_tracking>>());
+      switch (elev_profile) {
+        case elevation_profile::flat:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::flat>>());
+        case elevation_profile::hilly:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::hilly>>());
+        case elevation_profile::lessHilly:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::lessHilly>>());
+        default:
+          return r(get_dijkstra<foot<false, elevator_tracking>>());
+      }
     case search_profile::kWheelchair:
       return r(get_dijkstra<foot<true, elevator_tracking>>());
     case search_profile::kBike: return r(get_dijkstra<bike>());
@@ -475,6 +495,7 @@ std::optional<path> route(ways const& w,
 std::vector<std::optional<path>> route(
     ways const& w,
     search_profile const profile,
+    elevation_profile const elev_profile,
     location const& from,
     std::vector<location> const& to,
     match_view_t from_match,
@@ -496,7 +517,16 @@ std::vector<std::optional<path>> route(
 
   switch (profile) {
     case search_profile::kFoot:
-      return r(get_dijkstra<foot<false, elevator_tracking>>());
+      switch (elev_profile) {
+        case elevation_profile::flat:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::flat>>());
+        case elevation_profile::hilly:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::hilly>>());
+        case elevation_profile::lessHilly:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::lessHilly>>());
+        default:
+          return r(get_dijkstra<foot<false, elevator_tracking>>());
+      }
     case search_profile::kWheelchair:
       return r(get_dijkstra<foot<true, elevator_tracking>>());
     case search_profile::kBike: return r(get_dijkstra<bike>());
@@ -513,6 +543,7 @@ std::vector<std::optional<path>> route(
 
 std::optional<path> route(ways const& w,
                           search_profile const profile,
+                          elevation_profile const elev_profile,
                           location const& from,
                           location const& to,
                           match_view_t from_match,
@@ -533,7 +564,16 @@ std::optional<path> route(ways const& w,
 
   switch (profile) {
     case search_profile::kFoot:
-      return r(get_dijkstra<foot<false, elevator_tracking>>());
+      switch (elev_profile) {
+        case elevation_profile::flat:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::flat>>());
+        case elevation_profile::hilly:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::hilly>>());
+        case elevation_profile::lessHilly:
+          return r(get_dijkstra<foot<false, elevator_tracking, elevation_profile::lessHilly>>());
+        default:
+          return r(get_dijkstra<foot<false, elevator_tracking>>());
+      }
     case search_profile::kWheelchair:
       return r(get_dijkstra<foot<true, elevator_tracking>>());
     case search_profile::kBike: return r(get_dijkstra<bike>());
@@ -562,5 +602,14 @@ get_dijkstra<foot<true, osr::noop_tracking>>();
 
 template dijkstra<foot<false, osr::noop_tracking>>&
 get_dijkstra<foot<false, osr::noop_tracking>>();
+
+template dijkstra<foot<false, osr::noop_tracking, elevation_profile::lessHilly>>&
+get_dijkstra<foot<false, osr::noop_tracking, elevation_profile::lessHilly>>();
+
+template dijkstra<foot<false, osr::noop_tracking, elevation_profile::flat>>&
+get_dijkstra<foot<false, osr::noop_tracking, elevation_profile::flat>>();
+
+template dijkstra<foot<false, osr::noop_tracking, elevation_profile::hilly>>&
+get_dijkstra<foot<false, osr::noop_tracking, elevation_profile::hilly>>();
 
 }  // namespace osr

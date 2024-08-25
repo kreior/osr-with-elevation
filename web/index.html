@@ -127,6 +127,12 @@
     <option value="forward" selected>forward</option>
     <option value="backward">backward</option>
 </select>
+<select id="elevation" onchange="selectElevation(event)">
+    <option value="disabled" selected>Disabled</option>
+    <option value="less_hilly">Less Hilly</option>
+    <option value="flat">Flat</option>
+    <option value="hilly">Hilly</option>
+</select>
 <div id="journey-info">
     Test
 </div>
@@ -141,7 +147,8 @@
         start_level: 0.0,
         destination_level: 1.0,
         profile: document.getElementById('profile').value,
-        direction: document.getElementById('direction').value
+        direction: document.getElementById('direction').value,
+        elevation: document.getElementById('elevation').value
     };
 
     const meta = document.getElementById('journey-info');
@@ -464,6 +471,11 @@
         query.direction = e.target.value;
         map.getSource('path').setData(await getRoute());
     }
+
+    window.selectElevation = async (e) => {
+        query.elevation = e.target.value;
+        updateRoute();
+    };
 
     map.on('moveend', async () => {
         if (graphActive) {
