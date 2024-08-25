@@ -5,7 +5,9 @@
 
 namespace osr {
 
-template <bool IsWheelchair, typename Tracking = noop_tracking>
+template <bool IsWheelchair,
+    typename Tracking = noop_tracking,
+    elevation_profile elev_profile = elevation_profile::disabled>
 struct foot {
   static constexpr auto const kMaxMatchDistance = 100U;
   static constexpr auto const kOffroadPenalty = 3U;
@@ -164,7 +166,11 @@ struct foot {
           for_each_elevator_level(
               w, target_node, [&](level_t const target_lvl) {
                 auto const dist = w.way_node_dist_[way][std::min(from, to)];
-                auto const cost = way_cost(target_way_prop, way_dir, dist) +
+                elevation::ElevationChange elev(w.way_node_elevation_[way][std::min(from, to)]);
+                if(from > to){
+                  elev.reverseDirection();
+                }
+                auto const cost = way_cost(target_way_prop, way_dir, dist, elev) +
                                   node_cost(target_node_prop);
                 fn(node{target_node, target_lvl},
                    static_cast<std::uint32_t>(cost), dist, way, from, to);
@@ -176,13 +182,11 @@ struct foot {
           }
 
           auto const dist = w.way_node_dist_[way][std::min(from, to)];
-          //TODO add different elevation profiles (disabled, less hilly, flat, hilly)
-          //No need to access the data if disabled
           elevation::ElevationChange elev(w.way_node_elevation_[way][std::min(from, to)]);
           if(from > to){
             elev.reverseDirection();
           }
-          auto const cost = way_cost(target_way_prop, way_dir, dist) +
+          auto const cost = way_cost(target_way_prop, way_dir, dist, elev) +
                             node_cost(target_node_prop);
           fn(node{target_node, *target_lvl}, static_cast<std::uint32_t>(cost),
              dist, way, from, to);
@@ -301,21 +305,79 @@ struct foot {
 
   // Taken from https://osmand.net/docs/technical/osmand-file-formats/osmand-routing-xml#penalties-of-elevation-data
   // can return 0 if the slope is inaccessible
-  static constexpr uint8_t getSlopePenalty(double slope){
+  // return 1 for no penalty
+  static constexpr double get_slope_penalty(double slope){
     if (slope >= 0) {
-      if (slope < 3.0) {
-        return 1;
+      if (slope < 1.0) {
+        switch (elev_profile) {
+          case elevation_profile::lessHilly:
+          case elevation_profile::flat:
+            return 1;
+          case elevation_profile::hilly:
+            return 61;
+          default:
+            return 1;
+        }
+      } else if (slope < 3.0) {
+        switch (elev_profile) {
+          case elevation_profile::lessHilly:
+            return 1;
+          case elevation_profile::flat:
+            return 2;
+          case elevation_profile::hilly:
+            return 20;
+          default:
+            return 1;
+        }
       } else if (slope < 7.0) {
-        return 4;
+        switch (elev_profile) {
+          case elevation_profile::lessHilly:
+            return 4;
+          case elevation_profile::flat:
+            return 12;
+          case elevation_profile::hilly:
+            return 7;
+          default:
+            return 1;
+        }
       } else if (slope < 13.0) {
-        return 8;
+        switch (elev_profile) {
+          case elevation_profile::lessHilly:
+            return 8;
+          case elevation_profile::flat:
+            return 30;
+          case elevation_profile::hilly:
+            return 3;
+          default:
+            return 1;
+        }
       } else if (slope < 25.0) {
-        return 10;
+        switch (elev_profile) {
+          case elevation_profile::lessHilly:
+            return 10;
+          case elevation_profile::flat:
+            return 60;
+          case elevation_profile::hilly:
+            return 0.5;
+          default:
+            return 1;
+        }
       } else {
-        return 15;
+        switch (elev_profile) {
+          case elevation_profile::lessHilly:
+            return 15;
+          case elevation_profile::flat:
+            return 74;
+          case elevation_profile::hilly:
+            return 0.3;
+          default:
+            return 1;
+        }
       }
     } else {
-      if (slope > -9.0) {
+      if (slope > -5.0) {
+        return 1;
+      } else if (slope > -9.0) {
         return 5;
       } else if (slope > -17.0) {
         return 10;
@@ -336,23 +398,31 @@ struct foot {
     if ((e.is_foot_accessible() || e.is_bike_accessible()) &&
         (!IsWheelchair || !e.is_steps())) {
       auto base_cost = dist / (IsWheelchair ? 0.8 : 1.1F);
-
-      //TODO should be dependant on elevation profile
-      double slope = elevation::getAverageSlope(elev, dist);
-      if(slope > 8.3) {
-        return kInfeasible;
+      if(IsWheelchair || elev_profile == elevation_profile::disabled) {
+        return static_cast<cost_t>(std::round(base_cost));
       }
 
-      auto positiveSlopePenalty = getSlopePenalty(slope);
-      auto negativeSlopePenalty = getSlopePenalty(-slope);
-      if((positiveSlopePenalty == 0 && elev.getElevation() > 0)
-          || (negativeSlopePenalty == 0 && elev.getDescentFraction() > 0)) {
-        return kInfeasible;
+      auto cost = base_cost;
+      double slope = elevation::get_average_slope(elev, dist);
+
+      if(elev.getElevationFraction() > 0) {
+        auto positiveSlopePenalty = get_slope_penalty(slope);
+        if(positiveSlopePenalty == 0){
+          return kInfeasible;
+        }
+        cost = cost +
+               base_cost * elev.getElevationFraction() * positiveSlopePenalty;
       }
 
-      return static_cast<cost_t>(std::round(
-          base_cost * elev.getElevationFraction() * positiveSlopePenalty
-          + base_cost * elev.getDescentFraction() * negativeSlopePenalty));
+      if(elev.getDescentFraction() > 0) {
+        auto negativeSlopePenalty = get_slope_penalty(-slope);
+        if(negativeSlopePenalty == 0){
+          return kInfeasible;
+        }
+        cost = cost +
+               base_cost * elev.getDescentFraction() * negativeSlopePenalty;
+      }
+      return static_cast<cost_t>(std::round(cost));
 
     } else {
       return kInfeasible;

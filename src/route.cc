@@ -39,6 +39,27 @@ std::string_view to_str(search_profile const p) {
   throw utl::fail("{} is not a valid profile", static_cast<std::uint8_t>(p));
 }
 
+elevation_profile to_elevation_profile(std::string_view s) {
+  switch (cista::hash(s)) {
+    case cista::hash("disabled"): return elevation_profile::disabled;
+    case cista::hash("less_hilly"): return elevation_profile::lessHilly;
+    case cista::hash("flat"): return elevation_profile::flat;
+    case cista::hash("hilly"): return elevation_profile::hilly;
+  }
+  throw utl::fail("{} is not a valid elevation profile", s);
+}
+
+std::string_view elevation_profile_to_str(elevation_profile const p) {
+  switch (p) {
+    case elevation_profile::disabled: return "disabled";
+    case elevation_profile::lessHilly: return "less_hilly";
+    case elevation_profile::flat: return "flat";
+    case elevation_profile::hilly: return "hilly";
+  }
+  throw utl::fail("{} is not a valid elevation profile",
+                  static_cast<std::uint8_t>(p));
+}
+
 struct connecting_way {
   way_idx_t way_;
   std::uint16_t from_, to_;
@@ -403,6 +424,7 @@ std::vector<std::optional<path>> route(
     ways const& w,
     lookup const& l,
     search_profile const profile,
+    elevation_profile const elev_profile,
     location const& from,
     std::vector<location> const& to,
     cost_t const max,
@@ -412,8 +434,23 @@ std::vector<std::optional<path>> route(
     std::function<bool(path const&)> const& do_reconstruct) {
   switch (profile) {
     case search_profile::kFoot:
-      return route(w, l, get_dijkstra<foot<false, elevator_tracking>>(), from,
-                   to, max, dir, max_match_distance, blocked, do_reconstruct);
+      switch (elev_profile) {
+        case elevation_profile::flat:
+          return route(w, l, get_dijkstra<foot<false, elevator_tracking,
+                       elevation_profile::flat>>(), from, to, max, dir,
+                       max_match_distance, blocked, do_reconstruct);
+        case elevation_profile::hilly:
+          return route(w, l, get_dijkstra<foot<false, elevator_tracking,
+                       elevation_profile::hilly>>(), from, to, max, dir,
+                       max_match_distance, blocked, do_reconstruct);
+        case elevation_profile::lessHilly:
+          return route(w, l, get_dijkstra<foot<false, elevator_tracking,
+                       elevation_profile::lessHilly>>(), from, to, max, dir,
+                       max_match_distance, blocked, do_reconstruct);
+        default:
+          return route(w, l, get_dijkstra<foot<false, elevator_tracking>>(), from,
+                       to, max, dir, max_match_distance, blocked, do_reconstruct);
+      }
     case search_profile::kWheelchair:
       return route(w, l, get_dijkstra<foot<true, elevator_tracking>>(), from,
                    to, max, dir, max_match_distance, blocked, do_reconstruct);
@@ -436,6 +473,7 @@ std::vector<std::optional<path>> route(
 std::optional<path> route(ways const& w,
                           lookup const& l,
                           search_profile const profile,
+                          elevation_profile const elev_profile,
                           location const& from,
                           location const& to,
                           cost_t const max,
@@ -444,8 +482,23 @@ std::optional<path> route(ways const& w,
                           bitvec<node_idx_t> const* blocked) {
   switch (profile) {
     case search_profile::kFoot:
-      return route(w, l, get_dijkstra<foot<false, elevator_tracking>>(), from,
-                   to, max, dir, max_match_distance, blocked);
+      switch (elev_profile) {
+        case elevation_profile::flat:
+          return route(w, l, get_dijkstra<foot<false, elevator_tracking,
+                      elevation_profile::flat>>(), from, to, max, dir,
+                      max_match_distance, blocked);
+        case elevation_profile::hilly:
+          return route(w, l, get_dijkstra<foot<false, elevator_tracking,
+                       elevation_profile::hilly>>(), from, to, max, dir,
+                       max_match_distance, blocked);
+        case elevation_profile::lessHilly:
+          return route(w, l, get_dijkstra<foot<false, elevator_tracking,
+                       elevation_profile::lessHilly>>(), from, to, max, dir,
+                       max_match_distance, blocked);
+        default:
+          return route(w, l, get_dijkstra<foot<false, elevator_tracking>>(), from,
+                       to, max, dir, max_match_distance, blocked);
+      }
     case search_profile::kWheelchair:
       return route(w, l, get_dijkstra<foot<true, elevator_tracking>>(), from,
                    to, max, dir, max_match_distance, blocked);
@@ -470,5 +523,14 @@ get_dijkstra<foot<true, osr::noop_tracking>>();
 
 template dijkstra<foot<false, osr::noop_tracking>>&
 get_dijkstra<foot<false, osr::noop_tracking>>();
+
+template dijkstra<foot<false, osr::noop_tracking, elevation_profile::lessHilly>>&
+get_dijkstra<foot<false, osr::noop_tracking, elevation_profile::lessHilly>>();
+
+template dijkstra<foot<false, osr::noop_tracking, elevation_profile::flat>>&
+get_dijkstra<foot<false, osr::noop_tracking, elevation_profile::flat>>();
+
+template dijkstra<foot<false, osr::noop_tracking, elevation_profile::hilly>>&
+get_dijkstra<foot<false, osr::noop_tracking, elevation_profile::hilly>>();
 
 }  // namespace osr

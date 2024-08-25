@@ -97,6 +97,14 @@ enum class direction : std::uint8_t {
   kBackward,
 };
 
+// elevation profile
+enum class elevation_profile : std::uint8_t {
+  disabled,
+  lessHilly,
+  flat,
+  hilly
+};
+
 constexpr direction opposite(direction const dir) {
   return dir == direction::kForward ? direction::kBackward
                                     : direction::kForward;

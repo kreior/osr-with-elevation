@@ -26,6 +26,10 @@ search_profile to_profile(std::string_view);
 
 std::string_view to_str(search_profile);
 
+elevation_profile to_elevation_profile(std::string_view);
+
+std::string_view elevation_profile_to_str(elevation_profile);
+
 struct path {
   struct segment {
     std::vector<geo::latlng> polyline_;
@@ -39,6 +43,7 @@ struct path {
 
   cost_t cost_{kInfeasible};
   double dist_{0.0};
+  //can add elevation to reconstruct here
   std::vector<segment> segments_{};
   bool uses_elevator_{false};
 };
@@ -50,6 +55,7 @@ std::vector<std::optional<path>> route(
     ways const&,
     lookup const&,
     search_profile,
+    elevation_profile elev_profile,
     location const& from,
     std::vector<location> const& to,
     cost_t max,
@@ -63,6 +69,7 @@ std::vector<std::optional<path>> route(
 std::optional<path> route(ways const&,
                           lookup const&,
                           search_profile,
+                          elevation_profile elev_profile,
                           location const& from,
                           location const& to,
                           cost_t max,

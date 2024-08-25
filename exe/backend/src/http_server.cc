@@ -100,10 +100,19 @@ struct http_server::impl {
                : to_profile(profile_it->value().as_string());
   }
 
+  static elevation_profile get_elevation_profile_from_request(
+      boost::json::object const& q) {
+    auto const profile_it = q.find("elevation_profile");
+    return profile_it == q.end() || !profile_it->value().is_string()
+               ? elevation_profile::disabled
+               : to_elevation_profile(profile_it->value().as_string());
+  }
+
   void handle_route(web_server::http_req_t const& req,
                     web_server::http_res_cb_t const& cb) {
     auto const q = boost::json::parse(req.body()).as_object();
     auto const profile = get_search_profile_from_request(q);
+    auto const elevation_profile = get_elevation_profile_from_request(q);
     auto const direction_it = q.find("direction");
     auto const dir = to_direction(direction_it == q.end() ||
                                           !direction_it->value().is_string()
@@ -114,7 +123,8 @@ struct http_server::impl {
     auto const max_it = q.find("max");
     auto const max = static_cast<cost_t>(
         max_it == q.end() ? 3600 : max_it->value().as_int64());
-    auto const p = route(w_, l_, profile, from, to, max, dir, 100);
+    auto const p = route(w_, l_, profile, elevation_profile, from, to, max,
+                         dir, 100);
     if (!p.has_value()) {
       cb(json_response(req, "could not find a valid path",
                        http::status::not_found));
@@ -173,6 +183,7 @@ struct http_server::impl {
     auto const query = boost::json::parse(req.body()).as_object();
     auto const waypoints = query.at("waypoints").as_array();
     auto const profile = get_search_profile_from_request(query);
+    auto const elev_profile = get_elevation_profile_from_request(query);
     auto const min =
         geo::latlng{waypoints[1].as_double(), waypoints[0].as_double()};
     auto const max =
@@ -183,7 +194,19 @@ struct http_server::impl {
 
     switch (profile) {
       case search_profile::kFoot:
-        send_graph_response<foot<false>>(req, cb, gj);
+        switch (elev_profile) {
+          case elevation_profile::flat:
+            send_graph_response<foot<false, noop_tracking,
+                                 elevation_profile::flat>>(req, cb, gj);
+          case elevation_profile::lessHilly:
+            send_graph_response<foot<false, noop_tracking,
+                                     elevation_profile::lessHilly>>(req, cb, gj);
+          case elevation_profile::hilly:
+            send_graph_response<foot<false, noop_tracking,
+                                     elevation_profile::hilly>>(req, cb, gj);
+          default:
+            send_graph_response<foot<false>>(req, cb, gj);
+        }
         break;
       case search_profile::kWheelchair:
         send_graph_response<foot<true>>(req, cb, gj);
