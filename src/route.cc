@@ -137,6 +137,12 @@ double add_path(ways const& w,
   segment.to_level_ = r.way_properties_[way].to_level();
   segment.from_ = r.way_nodes_[way][from_idx];
   segment.to_ = r.way_nodes_[way][to_idx];
+  elevation::ElevationChange elev(r.way_node_elevation_[way][std::min(from_idx, to_idx)]);
+  if(from_idx > to_idx){
+    elev.reverseDirection();
+  }
+  segment.elevation_ = elev.getElevation();
+  segment.descent_ = elev.getDescent();
 
   for (auto const [osm_idx, coord] :
        infinite(reverse(utl::zip(w.way_osm_nodes_[way], w.way_polylines_[way]),

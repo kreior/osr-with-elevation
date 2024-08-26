@@ -39,6 +39,8 @@ struct path {
     way_idx_t way_;
     cost_t cost_{kInfeasible};
     distance_t dist_{0};
+    uint16_t elevation_{0};
+    uint16_t descent_{0};
   };
 
   cost_t cost_{kInfeasible};
