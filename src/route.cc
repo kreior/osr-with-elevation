@@ -104,6 +104,16 @@ double add_path(ways const& w,
   segment.dist_ = distance;
   segment.cost_ = expected_cost;
   segment.mode_ = to.get_mode();
+  segment.from_level_ = r.way_properties_[way].from_level();
+  segment.to_level_ = r.way_properties_[way].to_level();
+  segment.from_ = r.way_nodes_[way][from_idx];
+  segment.to_ = r.way_nodes_[way][to_idx];
+  elevation::ElevationChange elev(r.way_node_elevation_[way][std::min(from_idx, to_idx)]);
+  if(from_idx > to_idx){
+    elev.reverseDirection();
+  }
+  segment.elevation_ = elev.getElevation();
+  segment.descent_ = elev.getDescent();
 
   if (way != way_idx_t::invalid()) {
     segment.from_level_ = r.way_properties_[way].from_level();

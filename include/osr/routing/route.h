@@ -31,6 +31,8 @@ struct path {
     cost_t cost_{kInfeasible};
     distance_t dist_{0};
     mode mode_{mode::kFoot};
+    uint16_t elevation_{0};
+    uint16_t descent_{0};
   };
 
   cost_t cost_{kInfeasible};
