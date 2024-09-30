@@ -258,7 +258,7 @@
         destination_level: 0.0,
         profile: document.getElementById('profile').value,
         direction: document.getElementById('direction').value,
-        elevation: document.getElementById('elevation-profile').value
+        elevation_profile: document.getElementById('elevation-profile').value
     };
 
     const meta = document.getElementById('journey-info');
@@ -531,6 +531,7 @@
                     level: query.destination_level
                 },
                 profile: query.profile,
+                elevation_profile: query.elevation_profile,
                 direction: query.direction
             })
         });
@@ -868,7 +869,7 @@
     }
 
     window.selectElevation = async (e) => {
-        query.elevation = e.target.value;
+        query.elevation_profile = e.target.value;
         updateRoute();
     };
 
