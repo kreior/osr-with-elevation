@@ -144,12 +144,17 @@
 <script type="module">
     import {style} from "./style.js";
 
+    /*
+        Darmstadt start
+        const start = [8.6470224, 49.8774945]
+        const destination = [8.654272130796159, 49.87964690740449];
+     */
     const start = [9.182124, 48.782888]
     const destination = [9.183369, 48.784705];
     const query = {
         start, destination,
         start_level: 0.0,
-        destination_level: 1.0,
+        destination_level: 0.0,
         profile: document.getElementById('profile').value,
         direction: document.getElementById('direction').value,
         elevation_profile: document.getElementById('elevation-profile').value
@@ -248,7 +253,15 @@
                 direction: query.direction
             })
         });
+        if (!response.ok) {
+            console.error(`Failed to fetch route: ${response.statusText}`);
+            return null;
+        }
         const r = await response.json();
+        if (!r || !r.metadata || !r.features) {
+            console.error('Invalid route response', r);
+            return null;
+        }
         const min = Math.floor(r.metadata.duration / 60);
         const sec = r.metadata.duration % 60;
         const m = Math.round(r.metadata.distance);
@@ -336,7 +349,7 @@
             ],
             'paint': {
                 'line-color': '#1966a4',
-                'line-width': 7.5,
+                'line-width': 10,
                 'line-opacity': 0.8
             }
         });
@@ -355,10 +368,29 @@
             ],
             'paint': {
                 'line-color': '#42a5f5',
-                'line-width': 5,
+                'line-width': 7,
                 'line-opacity': 0.8
             }
         });
+       
+        ['path-outline', 'path'].forEach((layer) => {
+            map.on('click', layer, (e) => {
+                new maplibregl.Popup()
+                    .setLngLat(e.lngLat)
+                    .setDOMContent(toTable(e.features[0].properties))
+                    .addTo(map);
+                e.originalEvent.stopPropagation();
+            });
+
+            map.on('mouseenter', layer, () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+
+            map.on('mouseleave', layer, () => {
+                map.getCanvas().style.cursor = '';
+            });
+        });
+
     }
 
     const updateLevels = async () => {
