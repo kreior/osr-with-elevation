@@ -48,7 +48,7 @@ match_t lookup::match(location const& query,
       return match<car>(query, reverse, search_dir, max_match_distance,
                         blocked);
     case search_profile::kBike:
-      return match<bike>(query, reverse, search_dir, max_match_distance,
+      return match<bike<>>(query, reverse, search_dir, max_match_distance,
                          blocked);
     case search_profile::kCarParking:
       return match<car_parking<false>>(query, reverse, search_dir,

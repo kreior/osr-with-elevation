@@ -3,11 +3,13 @@
 #include "osr/routing/mode.h"
 #include "osr/routing/route.h"
 #include "osr/ways.h"
+#include "osr/routing/elevation_util.h"
 
 namespace osr {
 
 struct sharing_data;
 
+template <elevation_profile elev_profile = elevation_profile::disabled>
 struct bike {
   static constexpr auto const kMaxMatchDistance = 100U;
   static constexpr auto const kOffroadPenalty = 1U;
@@ -130,7 +132,11 @@ struct bike {
         }
 
         auto const dist = w.way_node_dist_[way][std::min(from, to)];
-        auto const cost = way_cost(target_way_prop, way_dir, dist) +
+        elevation::ElevationChange elev(w.way_node_elevation_[way][std::min(from, to)]);
+        if(from > to){
+          elev.reverseDirection();
+        }
+        auto const cost = way_cost(target_way_prop, way_dir, dist, elev) +
                           node_cost(target_node_prop);
         fn(node{target_node}, static_cast<std::uint32_t>(cost), dist, way, from,
            to);
@@ -142,6 +148,42 @@ struct bike {
       if (i != w.way_nodes_[way].size() - 1U) {
         expand(flip<SearchDir>(direction::kForward), i, i + 1);
       }
+    }
+  }
+
+  static constexpr cost_t way_cost(way_properties const e,
+                                   direction,
+                                   std::uint16_t const dist,
+                                   elevation::ElevationChange const& elev) {
+    if (e.is_bike_accessible()) {
+      auto base_cost = dist / 2.8F;
+      if(elev_profile == elevation_profile::disabled) {
+        return static_cast<cost_t>(std::round(base_cost));
+      }
+
+      auto cost = base_cost;
+      double slope = elevation::get_average_slope(elev, dist);
+
+      if(elev.getElevationFraction() > 0) {
+        auto positiveSlopePenalty = get_slope_penalty_bike(slope, elev_profile);
+        if(positiveSlopePenalty == 0){
+          return kInfeasible;
+        }
+        cost = cost +
+               base_cost * elev.getElevationFraction() * positiveSlopePenalty;
+      }
+
+      if(elev.getDescentFraction() > 0) {
+        auto negativeSlopePenalty = get_slope_penalty_bike(-slope, elev_profile);
+        if(negativeSlopePenalty == 0){
+          return kInfeasible;
+        }
+        cost = cost +
+               base_cost * elev.getDescentFraction() * negativeSlopePenalty;
+      }
+      return static_cast<cost_t>(std::round(cost));
+    } else {
+      return kInfeasible;
     }
   }
 

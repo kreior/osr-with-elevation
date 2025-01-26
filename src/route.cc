@@ -438,7 +438,17 @@ std::vector<std::optional<path>> route(
       }
     case search_profile::kWheelchair:
       return r(get_dijkstra<foot<true, elevator_tracking>>());
-    case search_profile::kBike: return r(get_dijkstra<bike>());
+    case search_profile::kBike:
+      switch (elev_profile) {
+        case elevation_profile::flat:
+          return r(get_dijkstra<bike<elevation_profile::flat>>());
+        case elevation_profile::hilly:
+          return r(get_dijkstra<bike<elevation_profile::hilly>>());
+        case elevation_profile::lessHilly:
+          return r(get_dijkstra<bike<elevation_profile::lessHilly>>());
+        default:
+          return r(get_dijkstra<bike<>>());
+      }
     case search_profile::kCar: return r(get_dijkstra<car>());
     case search_profile::kCarParking:
       return r(get_dijkstra<car_parking<false>>());
@@ -490,7 +500,17 @@ std::optional<path> route(ways const& w,
       }
     case search_profile::kWheelchair:
       return r(get_dijkstra<foot<true, elevator_tracking>>());
-    case search_profile::kBike: return r(get_dijkstra<bike>());
+    case search_profile::kBike:
+      switch (elev_profile) {
+        case elevation_profile::flat:
+          return r(get_dijkstra<bike<elevation_profile::flat>>());
+        case elevation_profile::hilly:
+          return r(get_dijkstra<bike<elevation_profile::hilly>>());
+        case elevation_profile::lessHilly:
+          return r(get_dijkstra<bike<elevation_profile::lessHilly>>());
+        default:
+          return r(get_dijkstra<bike<>>());
+      }
     case search_profile::kCar: return r(get_dijkstra<car>());
     case search_profile::kCarParking:
       return r(get_dijkstra<car_parking<false>>());
@@ -539,7 +559,17 @@ std::vector<std::optional<path>> route(
       }
     case search_profile::kWheelchair:
       return r(get_dijkstra<foot<true, elevator_tracking>>());
-    case search_profile::kBike: return r(get_dijkstra<bike>());
+    case search_profile::kBike:
+      switch (elev_profile) {
+        case elevation_profile::flat:
+          return r(get_dijkstra<bike<elevation_profile::flat>>());
+        case elevation_profile::hilly:
+          return r(get_dijkstra<bike<elevation_profile::hilly>>());
+        case elevation_profile::lessHilly:
+          return r(get_dijkstra<bike<elevation_profile::lessHilly>>());
+        default:
+          return r(get_dijkstra<bike<>>());
+      }
     case search_profile::kCar: return r(get_dijkstra<car>());
     case search_profile::kCarParking:
       return r(get_dijkstra<car_parking<false>>());
@@ -586,7 +616,17 @@ std::optional<path> route(ways const& w,
       }
     case search_profile::kWheelchair:
       return r(get_dijkstra<foot<true, elevator_tracking>>());
-    case search_profile::kBike: return r(get_dijkstra<bike>());
+    case search_profile::kBike:
+      switch (elev_profile) {
+        case elevation_profile::flat:
+          return r(get_dijkstra<bike<elevation_profile::flat>>());
+        case elevation_profile::hilly:
+          return r(get_dijkstra<bike<elevation_profile::hilly>>());
+        case elevation_profile::lessHilly:
+          return r(get_dijkstra<bike<elevation_profile::lessHilly>>());
+        default:
+          return r(get_dijkstra<bike<>>());
+      }
     case search_profile::kCar: return r(get_dijkstra<car>());
     case search_profile::kCarParking:
       return r(get_dijkstra<car_parking<false>>());
@@ -609,6 +649,16 @@ dijkstra<Profile>& get_dijkstra() {
 
 template dijkstra<foot<true, osr::noop_tracking>>&
 get_dijkstra<foot<true, osr::noop_tracking>>();
+
+template dijkstra<foot<true, osr::noop_tracking, elevation_profile::lessHilly>>&
+get_dijkstra<foot<true, osr::noop_tracking, elevation_profile::lessHilly>>();
+
+template dijkstra<foot<true, osr::noop_tracking, elevation_profile::flat>>&
+get_dijkstra<foot<true, osr::noop_tracking, elevation_profile::flat>>();
+
+template dijkstra<foot<true, osr::noop_tracking, elevation_profile::hilly>>&
+get_dijkstra<foot<true, osr::noop_tracking, elevation_profile::hilly>>();
+
 
 template dijkstra<foot<false, osr::noop_tracking>>&
 get_dijkstra<foot<false, osr::noop_tracking>>();

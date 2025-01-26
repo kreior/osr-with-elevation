@@ -168,5 +168,5 @@ int main(int argc, char const* argv[]) {
   };
 
   run_benchmark.template operator()<car>("car");
-  run_benchmark.template operator()<bike>("bike");
+  run_benchmark.template operator()<bike<>>("bike");
 }
