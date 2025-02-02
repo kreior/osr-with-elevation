@@ -10,7 +10,7 @@ namespace osr {
  * @param elev_profile The targeted elevation profile
  * @return a penalty >0 if the slope is traversable, 0 if impossible
  */
-static constexpr double get_slope_penalty_foot(double slope, elevation_profile elev_profile){
+static constexpr double get_slope_penalty_foot(const double slope, const elevation_profile elev_profile){
     if (slope >= 0) {
       if (slope < 1.0) {
         switch (elev_profile) {
@@ -106,7 +106,6 @@ static constexpr double get_slope_penalty_bike(double slope, elevation_profile e
       } else if (slope < 3.0) {
         switch (elev_profile) {
           case elevation_profile::lessHilly:
-            return 2;
           case elevation_profile::flat:
             return 2;
           case elevation_profile::hilly:

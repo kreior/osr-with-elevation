@@ -122,10 +122,12 @@ struct http_server::impl {
     auto const from = parse_location(q.at("start"));
     auto const to = parse_location(q.at("destination"));
     auto const max_it = q.find("max");
+    cost_t default_max = elevation_profile == elevation_profile::disabled ? 3600 : 10000;
+    double default_max_match_distance = elevation_profile == elevation_profile::disabled ? 100 : 1000;
     auto const max = static_cast<cost_t>(
-        max_it == q.end() ? 3600 : max_it->value().as_int64());
+        max_it == q.end() ? default_max : max_it->value().as_int64());
     auto const p = route(w_, l_, profile, elevation_profile, from, to, max,
-                         dir, 100);
+                         dir, default_max_match_distance);
     if (!p.has_value()) {
       cb(json_response(req, "could not find a valid path",
                        http::status::not_found));

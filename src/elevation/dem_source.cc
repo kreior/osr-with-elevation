@@ -89,7 +89,7 @@ ElevationChange sample_elevation_change(point& from,point& to,
   for (auto i = 1; i < samples; i++) {
     pt += step;
     auto const value = dem.get(geo::merc_to_latlng(pt));
-    if (value != NO_ELEVATION_DATA) {
+    if (last_value != NO_ELEVATION_DATA && value != NO_ELEVATION_DATA) {
       update_elevation(value);
     }
   }

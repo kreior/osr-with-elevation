@@ -6,7 +6,7 @@ namespace osr::elevation {
 
 using elevation_t = int16_t;
 constexpr elevation_t NO_ELEVATION_DATA = -32767;
-constexpr double sampling_interval = 30;
+constexpr double sampling_interval = 10;
 
 static constexpr uint16_t SCALING_FACTOR = 4; // Define experimentally
 static constexpr uint8_t MAX_BASE_VALUE = 15; // Maximum value for 4 bits
@@ -82,6 +82,22 @@ public:
     uint8_t elevation = (data & ELEVATION_MASK) >> ELEVATION_SHIFT;
     uint8_t descent = data & DESCENT_MASK;
     data = (descent << ELEVATION_SHIFT) | (elevation & DESCENT_MASK);
+  }
+
+  constexpr ElevationChange operator+(const ElevationChange& other) const {
+    ElevationChange result = *this;
+
+    // Use addElevation and addDescent methods to accumulate values
+    result.addElevation(other.getElevation());
+    result.addDescent(other.getDescent());
+
+    return result;
+  }
+
+  constexpr ElevationChange& operator+=(ElevationChange const& other) {
+    this->addElevation(other.getElevation());
+    this->addDescent(other.getDescent());
+    return *this;
   }
 };
 
