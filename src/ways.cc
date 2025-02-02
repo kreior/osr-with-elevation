@@ -1,6 +1,11 @@
 #include "osr/ways.h"
 
+#include <boost/qvm/map_mat_vec.hpp>
+
 #include "cista/io.h"
+#include "utl/parallel_for.h"
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
 
 namespace osr {
 
@@ -85,34 +90,50 @@ void ways::connect_ways(elevation::dem_source& dem) {
             mm_vec32<std::uint16_t>{mm("tmp_node_in_way_idx_data.bin")}},
         mm_vec<cista::page<std::uint32_t, std::uint16_t>>{
             mm("tmp_node_in_way_idx_index.bin")}};
+    std::mutex mtx_connect_ways;
     node_ways.resize(node_to_osm_.size());
     node_in_way_idx.resize(node_to_osm_.size());
-    for (auto const [osm_way_idx, osm_nodes, polyline] :
-         utl::zip(way_osm_idx_, way_osm_nodes_, way_polylines_)) {
+
+    r_->way_node_dist_.resize(way_osm_idx_.size());
+    r_->way_node_elevation_.resize(way_osm_idx_.size());
+    r_->way_nodes_.resize(way_osm_idx_.size());
+
+    auto zipped = utl::zip(way_osm_idx_, way_osm_nodes_, way_polylines_);
+    using ZippedElementType = decltype(*zipped.begin());
+    std::vector<ZippedElementType> zipped_vector(zipped.begin(), zipped.end());
+    
+    std::vector<std::pair<size_t, ZippedElementType>> indexed_zipped_vector;
+    indexed_zipped_vector.reserve(zipped_vector.size());
+    for (size_t i = 0; i < zipped_vector.size(); ++i) {
+      indexed_zipped_vector.emplace_back(i, zipped_vector[i]);
+    }
+
+    utl::parallel_for(indexed_zipped_vector, [this, &node_ways, &node_in_way_idx, &mtx_connect_ways, pt, &dem](auto const& idx_tup) {
+    auto const& [idx, tup] = idx_tup;
+    auto const& [osm_way_idx, osm_nodes, polyline] = tup;
+
+      auto way_idx = way_idx_t{idx};
       auto pred_pos = std::make_optional<point>();
       auto from = node_idx_t::invalid();
       auto distance = 0.0;
       elevation::ElevationChange elevationChange;
       auto i = std::uint16_t{0U};
-      auto way_idx = way_idx_t{r_->way_nodes_.size()};
-      auto dists = r_->way_node_dist_.add_back_sized(0U);
-      auto elev = r_->way_node_elevation_.add_back_sized(0U);
-      auto nodes = r_->way_nodes_.add_back_sized(0U);
+      
+      std::vector<uint16_t> local_dists;
+      std::vector<uint8_t> local_elevs;
+      std::vector<std::tuple<node_idx_t, way_idx_t, u_int16_t>> local_way_ids;
       for (auto const [osm_node_idx, pos] : utl::zip(osm_nodes, polyline)) {
         if (pred_pos.has_value()) {
           distance += geo::distance(pos, *pred_pos);
-          elevationChange = elevation::sample_elevation_change(*pred_pos, pos, dem, elevation::sampling_interval);
+          elevationChange += elevation::sample_elevation_change(*pred_pos, pos, dem, elevation::sampling_interval);
         }
 
         if (node_way_counter_.is_multi(to_idx(osm_node_idx))) {
           auto const to = get_node_idx(osm_node_idx);
-          node_ways[to].push_back(way_idx);
-          node_in_way_idx[to].push_back(i);
-          nodes.push_back(to);
-
+          local_way_ids.push_back({to,way_idx, i});
           if (from != node_idx_t::invalid()) {
-            dists.push_back(static_cast<std::uint16_t>(std::round(distance)));//here the distance is aggregated
-            elev.push_back(elevationChange.getData());
+            local_dists.push_back(static_cast<std::uint16_t>(std::round(distance)));//here the distance is aggregated
+            local_elevs.push_back(elevationChange.getData());
           }
 
           distance = 0.0;
@@ -128,14 +149,51 @@ void ways::connect_ways(elevation::dem_source& dem) {
 
         pred_pos = pos;
       }
-      pt->increment();
-    }
 
-    for (auto const x : node_ways) {
-      r_->node_ways_.emplace_back(x);
-    }
-    for (auto const x : node_in_way_idx) {
-      r_->node_in_way_idx_.emplace_back(x);
+      //sync here
+      std::unique_lock<std::mutex> lock(mtx_connect_ways);
+      for (auto const& x : local_dists) {
+        r_->way_node_dist_[way_idx].push_back(x);
+      }
+      for (auto const& x : local_elevs) {
+        r_->way_node_elevation_[way_idx]. push_back(x);
+      }
+      for (auto const& [node_id, way_id, node_in_way_id] : local_way_ids) {
+        node_ways[node_id].push_back(way_id);
+        node_in_way_idx[node_id].push_back(node_in_way_id);
+        r_->way_nodes_[way_idx].push_back(node_id);
+      }
+      lock.unlock();
+      pt->increment();
+    });
+
+    auto way_ids_it = node_ways.begin();
+    auto node_ids_it = node_in_way_idx.begin();
+
+    //Need to resort based on local way ID because of multithreading
+    for (; way_ids_it != node_ways.end(); ++way_ids_it, ++node_ids_it) {
+      // Create and populate a vector of pairs directly
+      std::vector<std::pair<way_idx_t, u_int16_t>> collect;
+      collect.reserve((*way_ids_it).size());
+
+      for (size_t i = 0; i < (*way_ids_it).size(); ++i) {
+        collect.emplace_back((*way_ids_it)[i], (*node_ids_it)[i]);
+      }
+
+      // Sort based on way_id
+      std::ranges::sort(collect, [](const auto& a, const auto& b) {
+          return a.first < b.first;
+      });
+
+      std::vector<way_idx_t> way_ids_sorted(collect.size());
+      std::vector<u_int16_t> node_ids_sorted(collect.size());
+      for (size_t i = 0; i < collect.size(); ++i) {
+        way_ids_sorted[i] = collect[i].first;
+        node_ids_sorted[i] = collect[i].second;
+      }
+
+      r_->node_ways_.emplace_back(std::move(way_ids_sorted));
+      r_->node_in_way_idx_.emplace_back(std::move(node_ids_sorted));
     }
   }
 
